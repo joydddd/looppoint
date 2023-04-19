@@ -56,9 +56,9 @@ looppoint: sdekit
 	make -C tools/src/Drivers build TARGET=intel64
 
 sniper: pinkit
-	@if [ ! -d "tools/sniper" ]; then \
-		$(info Downloading Sniper from $(SNIPER_GIT_REPO)) \
-		git clone $(SNIPER_GIT_REPO) tools/sniper ; \
+#	@if [ ! -d "tools/sniper" ]; then \
+	 	$(info Downloading Sniper from $(SNIPER_GIT_REPO)) \
+	 	git clone $(SNIPER_GIT_REPO) tools/sniper ; \
 	fi
 	make -C tools/sniper
 

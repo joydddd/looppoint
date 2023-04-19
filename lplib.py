@@ -94,7 +94,7 @@ export PIN_APP_LD_LIBRARY_PATH=$LD_LIBRARY_PATH
   return
 
 def graphite_submit(
-    config, graphiteoptions, files, traces = None, run_options = [],
+    config, graphiteoptions, files, output_dir = ".", traces = None, run_options = [],
     pinballs = None, startcmd = None, sniper_binary_args = None):
 
   tmpdir = False
@@ -162,6 +162,9 @@ def graphite_submit(
     %(startcmd)s \
       %(graphite_extra_opts)s
     (if [ -x "./postprocess" ]; then "./postprocess" "%(program)s" "%(inputsize)s" "%(nthreads)s" "%(lp_base_dir)s"; fi )
+    
+    ## copy dram traces
+    mv dram_cntlr* %(output_dir)s
   ''' % locals())
 
   cmd = 'bash %s' % os.path.join(target_dir, 'execute.sh')

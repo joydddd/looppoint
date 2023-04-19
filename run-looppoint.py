@@ -210,11 +210,14 @@ def get_startsim_parms(sim_config, config):
     sniper_args += ['--viz']
   if ('regionid' in sim_config) and (sim_config['regionid'] != None):
     sniper_args += ['-d %s' % os.path.join(config['sim_res_dir'], sim_config['regionid'])]
+  # DEBUG:
+  print("SniperSim cmd \n %(sniper_args)")
   return sniper_args
 
 def run_sniper(config, mtng=True):
   print ("[LOOPPOINT] Starting Sniper simulations")
-  arch_cfg = 'gainestown'
+  ## TODO: edit simulation architecture
+  arch_cfg = 'icelake'
   scheduler = 'static'
   sniper_binary_args = None
   configParser = ConfigParser.ConfigParser()
@@ -231,6 +234,7 @@ def run_sniper(config, mtng=True):
   run_options = []
   pinballs = None
   startcmd = None
+  output_dir = None
   if config['validate'] and not config['reuse_fullsim']:
     wp_config = {}
     wp_config['arch_cfg'] = arch_cfg
@@ -243,11 +247,12 @@ def run_sniper(config, mtng=True):
     wp_config['include_mem_latency'] = include_mem_latency
     wp_config['viz'] = viz
     flags = get_startsim_parms(wp_config, config)
+    output_dir = os.path.join(config['sim_res_dir'], wp_config['regionid'])
     graphiteoptions = ''
     if flags:
       graphiteoptions += ' ' + ' '.join(flags)
 
-    lplib.graphite_submit(config, graphiteoptions, files, traces = traces, run_options = run_options, pinballs = pinballs, startcmd = startcmd, sniper_binary_args = sniper_binary_args)
+    lplib.graphite_submit(config, graphiteoptions, files, output_dir = output_dir, traces = traces, run_options = run_options, pinballs = pinballs, startcmd = startcmd, sniper_binary_args = sniper_binary_args)
 
   csv_file = glob.glob(config['data_dir'] + '/*.global.pinpoints.csv')
   if not csv_file:
@@ -287,11 +292,12 @@ def run_sniper(config, mtng=True):
       rep_config['viz'] = viz
       rep_config['controller'] = '-control' if config['sniper_sde'] else '-pinplay:control'
       flags = get_startsim_parms(rep_config, config)
+      output_dir = os.path.join(config['sim_res_dir'], rep_config['regionid'])
       graphiteoptions = ''
       if flags:
         graphiteoptions += ' ' + ' '.join(flags)
 
-      lplib.graphite_submit(config, graphiteoptions, files, traces = traces, run_options = run_options, pinballs = pinballs, startcmd = startcmd, sniper_binary_args = sniper_binary_args)
+      lplib.graphite_submit(config, graphiteoptions, files, output_dir = output_dir, traces = traces, run_options = run_options, pinballs = pinballs, startcmd = startcmd, sniper_binary_args = sniper_binary_args)
 
 def get_sim_res(config, sim_path, profile_path, region = None):
   if region == None:
@@ -342,6 +348,8 @@ def evaluate(config):
       sim_path = config['sim_res_dir']
       try:
         profile_path = glob.glob(config['output_base_dir_default'] + '/*.Data')[0]
+        print("profile directory: ")
+        print(profile_path)
       except:
         print('[LOOPPOINT] Error: Could not find profile directory.')
         exit(1)
@@ -486,12 +494,17 @@ def add_dependent_config(config):
   else:
     config['output_base_dir_default'] = os.path.join(config['bm_path'], config['bm_param_str'] + '-default')
     config['output_base_dir'] = os.path.join(config['bm_path'], config['bm_param_str'] + '-' + time.strftime("%Y%m%d%H%M%S"))
+  ## DEBUG: 
+  print(config['output_base_dir_default'])
+  print(config['output_base_dir'])
 
   config['sim_res_dir_default']  = os.path.join(config['output_base_dir_default'],'simulation')
   config['sim_res_dir']  = os.path.join(config['output_base_dir'],'simulation')
   config['whole_basename'] = os.path.join(config['output_base_dir'], 'whole_program.' + config['bm_input'], config['bm_name'] + '.' + config['bm_input'])
+  
+  # TODO: change slice size if we need larger slices -> change to 1B for our application
   # regions of size 100M instructions per thread for regular applications and 10M per thread for demo applications
-  config['slice_size'] = str(int(config['ncores'])*10000000) if config['bm_suite'] == 'demo' else str(int(config['ncores'])*100000000)
+  config['slice_size'] = str(int(config['ncores'])*10000000) if config['bm_suite'] == 'demo' else str(int(config['ncores'])*1000000000)
   if config['bm_suite'] == 'demo':
     config['cluster_maxk'] = '20'
 
@@ -514,6 +527,7 @@ def create_default_config():
   # directories
   config['basedir'] = os.path.dirname(os.path.realpath(__file__))
 
+  # TODO: change warmup factor is the warmup is in sufficient
   # cluster parameters
   config['warmup_factor'] = '2'
   config['cluster_dim']  = '100'
@@ -588,6 +602,7 @@ def setup_output_dir(config):
 
 def update_config_defaults(config):
   data_dir = glob.glob(config['output_base_dir_default'] + '/*.Data')
+  ## DEBUG:
   config['data_dir'] = data_dir[0]
 
 def run(app_cmd, update_config, res_tab=[]):
