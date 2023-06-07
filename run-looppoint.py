@@ -199,7 +199,10 @@ def get_startsim_parms(sim_config, config):
     else:
       sniper_args += ['-ssimuserroi --roi-script --trace-args="%(controller)s start:address:%(start_image)s+%(start_offset)s:count%(start_address_count)s:global" --trace-args="%(controller)s stop:address:%(end_image)s+%(end_offset)s:count%(end_address_count)s:global"' % sim_config]
     sniper_args += ['-gperf_model/fast_forward/oneipc/interval=100']
-    sniper_args += ['-ggeneral/inst_mode_init=detailed']
+    ## TODO: select cache-only mode for warmup
+    sniper_args += ['-ggeneral/inst_mode_init=cache_only']
+    # sniper_args += ['-ggeneral/inst_mode_init=detailed']
+    sniper_args += ['--cache-only'] ## TODO: roi running in cache-only mode
   if ('rob_config' in sim_config) and (sim_config['rob_config'] == True):
     sniper_args += ['-c rob']
   if ('dram_perf_qmodel' in sim_config) and (sim_config['dram_perf_qmodel'] == False):
@@ -211,7 +214,7 @@ def get_startsim_parms(sim_config, config):
   if ('regionid' in sim_config) and (sim_config['regionid'] != None):
     sniper_args += ['-d %s' % os.path.join(config['sim_res_dir'], sim_config['regionid'])]
   # DEBUG:
-  print("SniperSim cmd \n %(sniper_args)")
+  print("SniperSim cmd \n %s", sniper_args)
   return sniper_args
 
 def run_sniper(config, mtng=True):
