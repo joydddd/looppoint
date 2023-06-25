@@ -220,7 +220,7 @@ def get_startsim_parms(sim_config, config):
 def run_sniper(config, mtng=True):
   print ("[LOOPPOINT] Starting Sniper simulations")
   ## TODO: edit simulation architecture
-  arch_cfg = 'icelake'
+  arch_cfg = config['arch_cfg']
   scheduler = 'static'
   sniper_binary_args = None
   configParser = ConfigParser.ConfigParser()
@@ -564,6 +564,7 @@ def create_default_config():
 
   # Number of cores
   config['ncores'] = os.getenv('OMP_NUM_THREADS', '8')
+  config['arch_cfg'] = 'icelake_s'
 
   config['flowcontrol'] = True
   config['custom_cfg'] = ''
@@ -653,6 +654,7 @@ Usage:
     [-w | --wait-policy=<omp wait policy> (passive)]
     [-p | --program=<suite-application-input> (demo-matrix-1)]: Ex. demo-dotproduct-1,cpu2017-bwaves-1
     [-c | --custom-cfg=<cfg-file>]: Run a workload of interest using cfg-file in the current directory (See README.md)
+    [-a | --arch-cfg=<arch-cfg>]: Sniper sim simulation architecture (icelake_s)]
     [--force]: Start a new set of end-to-end run
     [--reuse-profile]: Reuse the profiling data (used along with --force)
     [--reuse-fullsim]: Reuse the full program simulation (used along with --force)
@@ -669,10 +671,11 @@ Usage:
   update_config = {}
   suite_apps = []
   custom_cfg = False
+  custom_arch_cfg = False
   native_run = False
   validate = True
   try:
-    opts, args = getopt.getopt(sys.argv[1:], 'hn:i:w:p:c:', [ 'help', 'ncores=', 'input-class=', 'wait-policy=', 'program=', 'custom-cfg=', 'force', 'reuse-profile', 'reuse-fullsim', 'no-validate', 'no-flowcontrol', 'use-pinplay', 'native' ])
+    opts, args = getopt.getopt(sys.argv[1:], 'hn:i:w:p:c:a:', [ 'help', 'ncores=', 'input-class=', 'wait-policy=', 'program=', 'custom-cfg=', 'arch-cfg=', 'force', 'reuse-profile', 'reuse-fullsim', 'no-validate', 'no-flowcontrol', 'use-pinplay', 'native' ])
   except getopt.GetoptError, e:
     # print help information and exit:
     print e
@@ -691,6 +694,9 @@ Usage:
     if o == '-c' or o == '--custom-cfg':
       update_config['custom_cfg'] = os.path.abspath(a)
       custom_cfg = True
+    if o == '-a' or o == '--arch-cfg':
+      update_config['arch_cfg'] = a
+      custom_arch_cfg = True
     if o == '--force':
       update_config['force'] = True
     if o == '--reuse-profile':

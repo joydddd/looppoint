@@ -164,7 +164,7 @@ def graphite_submit(
     (if [ -x "./postprocess" ]; then "./postprocess" "%(program)s" "%(inputsize)s" "%(nthreads)s" "%(lp_base_dir)s"; fi )
     
     ## copy dram traces
-    mv *.trace %(output_dir)s
+    mv *.trace *.out %(output_dir)s
   ''' % locals())
 
   cmd = 'bash %s' % os.path.join(target_dir, 'execute.sh')
