@@ -67,7 +67,13 @@ def make_mt_pinball(config):
   cmd = '%(tool_sde_pinpoints)s --delete --mode mt --sdehome=%(sde_kit)s ' % config
   if config['use_pinplay']:
     cmd = '%(tool_pinpoints)s --delete --mode mt --pintool="%(pintool_looppoint)s" ' % config
-  cmd += ' --cfg %(app_cfg)s --log_options "' % config + ('-log:start_address' if config['use_pinplay'] else '-start_address') + ' main -log:fat  -log:mp_atomic 0 -log:mp_mode 0 -log:strace -log:basename %(whole_basename)s" --replay_options="-replay:strace" -l' % config
+  cmd += ' --cfg %(app_cfg)s --log_options "' % config
+  if config['pin_hook']:
+    cmd += '-control start:address:pin_hook_init:bcast,stop:address:pin_hook_fini:bcast '
+    # cmd += '-control start:address:main:bcast '
+  else:
+    cmd += ('-log:start_address' if config['use_pinplay'] else '-start_address') + ' main '
+  cmd += '-log:fat  -log:mp_atomic 0 -log:mp_mode 0 -log:strace -log:basename %(whole_basename)s" --replay_options="-replay:strace" -l' % config
   lplib.jobsubmit(config, files = files, out_dirs = out_dirs, startcmd = [cmd])
 
 def gen_dcfg(config):
@@ -561,6 +567,7 @@ def create_default_config():
   config['validate'] = True
   config['use_pinplay'] = False
   config['sniper_sde'] = False
+  config['pin_hook'] = False
 
   # Number of cores
   config['ncores'] = os.getenv('OMP_NUM_THREADS', '8')
@@ -569,6 +576,7 @@ def create_default_config():
   config['flowcontrol'] = True
   config['custom_cfg'] = ''
   config['native_run'] = False
+
 
   return config
 
@@ -675,7 +683,7 @@ Usage:
   native_run = False
   validate = True
   try:
-    opts, args = getopt.getopt(sys.argv[1:], 'hn:i:w:p:c:a:', [ 'help', 'ncores=', 'input-class=', 'wait-policy=', 'program=', 'custom-cfg=', 'arch-cfg=', 'force', 'reuse-profile', 'reuse-fullsim', 'no-validate', 'no-flowcontrol', 'use-pinplay', 'native' ])
+    opts, args = getopt.getopt(sys.argv[1:], 'hn:i:w:p:c:a:', [ 'help', 'ncores=', 'input-class=', 'wait-policy=', 'program=', 'custom-cfg=', 'arch-cfg=', 'force', 'reuse-profile', 'reuse-fullsim', 'no-validate', 'no-flowcontrol', 'use-pinplay', 'native', 'pin-hook' ])
   except getopt.GetoptError, e:
     # print help information and exit:
     print e
@@ -713,6 +721,8 @@ Usage:
     if o == '--native':
       update_config['native_run'] = True
       native_run = True
+    if o == '--pin-hook':
+      update_config['pin_hook'] = True
 
   if suite_apps and custom_cfg:
     print('Cannot run a default application (--program) while using --custom-cfg')
