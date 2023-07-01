@@ -204,9 +204,10 @@ def get_startsim_parms(sim_config, config):
       sniper_args += ['-ssimuserroi --roi-script --trace-args="%(controller)s stop:address:%(end_image)s+%(end_offset)s:count%(end_address_count)s:global"' % sim_config]
     else:
       sniper_args += ['-ssimuserroi --roi-script --trace-args="%(controller)s start:address:%(start_image)s+%(start_offset)s:count%(start_address_count)s:global" --trace-args="%(controller)s stop:address:%(end_image)s+%(end_offset)s:count%(end_address_count)s:global"' % sim_config]
-    sniper_args += ['-gperf_model/fast_forward/oneipc/interval=100']
+    # sniper_args += ['-gperf_model/fast_forward/oneipc/interval=10000']
+    ## TODO: use fast forward mode until warmup region
     ## TODO: select cache-only mode for warmup
-    sniper_args += ['-ggeneral/inst_mode_init=cache_only']
+    sniper_args += ['-ggeneral/inst_mode_init=fast_forward']
     # sniper_args += ['-ggeneral/inst_mode_init=detailed']
     sniper_args += ['--cache-only'] ## TODO: roi running in cache-only mode
   if ('rob_config' in sim_config) and (sim_config['rob_config'] == True):
@@ -538,7 +539,7 @@ def create_default_config():
 
   # TODO: change warmup factor is the warmup is in sufficient
   # cluster parameters
-  config['warmup_factor'] = '2'
+  config['warmup_factor'] = '0.05'
   config['cluster_dim']  = '100'
   config['cluster_maxk']   = '50'
 
