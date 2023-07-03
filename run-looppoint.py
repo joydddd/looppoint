@@ -112,9 +112,13 @@ def gen_bbv(config):
     cmd = '%(tool_pinpoints)s --pintool="%(pintool_looppoint)s" ' % config
 
   cmd += ' --global_regions --pccount_regions --cfg %(app_cfg)s --whole_pgm_dir %(wpp_dir)s --mode mt -S %(slice_size)s -b --replay_options "-replay:deadlock_timeout 0 -global_profile -emit_vectors 0 -filter_exclude_lib libgomp.so.1 -filter_exclude_lib libiomp5.so  -looppoint:global_profile -looppoint:dcfg-file %(dcfg_file)s -looppoint:main_image_only 1 -looppoint:loop_info %(bm_name)s.%(bm_input)s.loop_info.txt' % config
+  ## Add pin_hook start point to save some generation time 
+  if config['pin_hook']:
+    cmd += ' -control start:address:pin_hook_init:bcast,stop:address:pin_hook_fini:bcast'
   if config['flowcontrol']:
     cmd += ' -flowcontrol:verbose 1 -flowcontrol:quantum 1000000 -flowcontrol:maxthreads %(ncores)s' % config
   cmd += '"'
+  log(config, 'Running cmd: \n %s\n' % cmd )
   ex_log(cmd, config, cwd = config['output_base_dir'])
 
   # Concatenation of BBVs
@@ -135,6 +139,7 @@ def gen_bbv(config):
       print ("[LOOPPOINT] Found concatenated vector. Not generating.")
       return
   cmd = '%(tool_concat_vector)s %(bb_basename)s %(ncores)s' % config
+  log(config, 'Running cmd: \n %s\n' % cmd )
   ex_log(cmd, config)
   try:
     cvfile = glob.glob(config['data_dir'] + '/*.global.cv')[0]
@@ -165,6 +170,7 @@ def gen_cluster(config):
   if config['cluster_maxk']:
     cmd += ' -coveragePct 1.0 -maxK %(cluster_maxk)s '% config
   cmd += '"'
+  log(config, 'Running cmd: \n %s\n' % cmd )
   ex_log(cmd, config, cwd = config['output_base_dir'])
 
 def get_address_pccount(line, wd):
@@ -511,10 +517,8 @@ def add_dependent_config(config):
   config['sim_res_dir_default']  = os.path.join(config['output_base_dir_default'],'simulation')
   config['sim_res_dir']  = os.path.join(config['output_base_dir'],'simulation')
   config['whole_basename'] = os.path.join(config['output_base_dir'], 'whole_program.' + config['bm_input'], config['bm_name'] + '.' + config['bm_input'])
-  
-  # TODO: change slice size if we need larger slices -> change to 1B for our application
   # regions of size 100M instructions per thread for regular applications and 10M per thread for demo applications
-  config['slice_size'] = str(int(config['ncores'])*10000000) if config['bm_suite'] == 'demo' else str(int(config['ncores'])*1000000000)
+  config['slice_size'] = str(int(config['ncores']) * int(config['roi_length'])) if config['roi_length'] else str(int(config['ncores'])*10000000) if config['bm_suite'] == 'demo' else str(int(config['ncores'])*100000000)
   if config['bm_suite'] == 'demo':
     config['cluster_maxk'] = '20'
 
@@ -539,7 +543,7 @@ def create_default_config():
 
   # TODO: change warmup factor is the warmup is in sufficient
   # cluster parameters
-  config['warmup_factor'] = '0.05'
+  config['warmup_factor'] = '2'
   config['cluster_dim']  = '100'
   config['cluster_maxk']   = '50'
 
@@ -671,6 +675,9 @@ Usage:
     [--no-flowcontrol]: Disable thread flowcontrol during profiling
     [--use-pinplay]: Use PinPlay instead of SDE for profiling
     [--native]: Run the application natively (no sampling/simulation)
+    [--pin-hook]: Use PinPlay to profile from lable <pin_hook_init> to <pin_hook_fini>
+    [--warmup-factor]: Sepcity the number of slices used to warmup before ROI (default: warmup_factor = 2)
+    [--roi-length]: number of instructions in ROI per core (default: 100M)
 
     Example:> ./run-looppoint.py -n 8 -i test -p demo-matrix-1 --force --no-validate
     Example:> /path/to/looppoint/run-looppoint.py -n 8 -w active -c matmul.1.cfg --force
@@ -684,7 +691,7 @@ Usage:
   native_run = False
   validate = True
   try:
-    opts, args = getopt.getopt(sys.argv[1:], 'hn:i:w:p:c:a:', [ 'help', 'ncores=', 'input-class=', 'wait-policy=', 'program=', 'custom-cfg=', 'arch-cfg=', 'force', 'reuse-profile', 'reuse-fullsim', 'no-validate', 'no-flowcontrol', 'use-pinplay', 'native', 'pin-hook' ])
+    opts, args = getopt.getopt(sys.argv[1:], 'hn:i:w:p:c:a:', [ 'help', 'ncores=', 'input-class=', 'wait-policy=', 'program=', 'custom-cfg=', 'arch-cfg=', 'force', 'reuse-profile', 'reuse-fullsim', 'no-validate', 'no-flowcontrol', 'use-pinplay', 'native', 'pin-hook', 'warmup-factor=', 'roi-length=' ])
   except getopt.GetoptError, e:
     # print help information and exit:
     print e
@@ -724,6 +731,10 @@ Usage:
       native_run = True
     if o == '--pin-hook':
       update_config['pin_hook'] = True
+    if o == '--warmup-factor': 
+      update_config['warmup_factor'] = a
+    if o == '--roi-length':
+      update_config['roi_length'] = a
 
   if suite_apps and custom_cfg:
     print('Cannot run a default application (--program) while using --custom-cfg')
