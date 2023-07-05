@@ -197,6 +197,21 @@ def get_multiplier(line):
   multiplier = line.split(',')[14]
   return float(multiplier)
 
+def get_region_type(line):
+  region_type = line.split(',')[15]
+  return region_type.split(':')[0], region_type.split(':')[1] if len(region_type.split(':')) > 1 else None
+
+def get_warmup_csv_line(f, regionid):
+  for line in f:
+    if not line.startswith('Warmup'):
+        continue
+    line = line.strip()
+    type, id = get_region_type(line)
+    if type == 'warmup' and id == regionid:
+      return line
+  print("No warmup for region %s" % regionid)
+  return None
+
 def get_startsim_parms(sim_config, config):
   sniper_args = []
   sniper_args += ['-v']
@@ -206,13 +221,26 @@ def get_startsim_parms(sim_config, config):
   sniper_args += ['-c%(arch_cfg)s' % sim_config]
   sniper_args += ['--trace-args="-sniper:flow 1000"']
   if  ('end_address' in sim_config) and (sim_config['end_address'] != None):
+    
     if sim_config['start_address_count'] == '0':
-      sniper_args += ['-ssimuserroi --roi-script --trace-args="%(controller)s stop:address:%(end_image)s+%(end_offset)s:count%(end_address_count)s:global"' % sim_config]
+      sniper_args += ['--trace-args="%(controller)s stop:address:%(end_image)s+%(end_offset)s:count%(end_address_count)s:global"' % sim_config]
     else:
-      sniper_args += ['-ssimuserroi --roi-script --trace-args="%(controller)s start:address:%(start_image)s+%(start_offset)s:count%(start_address_count)s:global" --trace-args="%(controller)s stop:address:%(end_image)s+%(end_offset)s:count%(end_address_count)s:global"' % sim_config]
+      sniper_args += ['--trace-args="%(controller)s start:address:%(start_image)s+%(start_offset)s:count%(start_address_count)s:global" --trace-args="%(controller)s stop:address:%(end_image)s+%(end_offset)s:count%(end_address_count)s:global" ' % sim_config]
     # sniper_args += ['-gperf_model/fast_forward/oneipc/interval=10000']
+    
+    ## Add warmlup region
+    if ('warmup_address' in sim_config) and  (sim_config['warmup_address'] != None):
+      sniper_args += ['-ssimuserwarmup --roi-script ']
+      sniper_args += ['--trace-args="%(controller)s warmup-start:address:%(warmup_image)s+%(warmup_offset)s:count%(warmup_address_count)s:global"' % sim_config]
+    else:
+      sniper_args += ['-ssimuserroi --roi-script ']
+
+    ## enable pinplay controller log. writing to log file 'pinplay_controller.log'
+    sniper_args += ['--trace-args="-pinplay:controller_log 1" ']
+    controller_log = os.path.join(config['sim_res_dir'], sim_config['regionid'], 'pinplay_controller.log')
+    sniper_args += ['--trace-args="-pinplay:controller_olog %s" ' %  controller_log] 
+    
     ## TODO: use fast forward mode until warmup region
-    ## TODO: select cache-only mode for warmup
     sniper_args += ['-ggeneral/inst_mode_init=fast_forward']
     # sniper_args += ['-ggeneral/inst_mode_init=detailed']
     sniper_args += ['--cache-only'] ## TODO: roi running in cache-only mode
@@ -273,16 +301,23 @@ def run_sniper(config, mtng=True):
   csv_file = glob.glob(config['data_dir'] + '/*.global.pinpoints.csv')
   if not csv_file:
     print ("[LOOPPOINT] Error: Unable to find cluster information.")
+  
+  regions = []
   with open(csv_file[0], 'r') as f:
     for csv_line in f:
       if not csv_line.startswith('cluster'):
         continue
+      else: 
+        regions.append(csv_line)
+
+  for csv_line in regions:
       start_address = None
       start_address_count = '0'
       end_address = None
       end_address_count = '0'
       regionid = None
       regionid = get_regionid(csv_line)
+      warmup_csv_line = get_warmup_csv_line(open(csv_file[0], 'r'), regionid)
 
       start_address, start_address_count = get_address_pccount(csv_line, 'start')
       start_image, start_offset = get_image_offset(csv_line, 'start')
@@ -291,6 +326,13 @@ def run_sniper(config, mtng=True):
       rep_config = {}
       rep_config['arch_cfg'] = arch_cfg
       rep_config['scheduler'] = scheduler
+      if warmup_csv_line is not None:
+        warmup_address, warmup_address_count = get_address_pccount(warmup_csv_line, 'start')
+        warmup_image, warmup_offset = get_image_offset(warmup_csv_line, 'start')
+        rep_config['warmup_address'] = warmup_address
+        rep_config['warmup_image'] = warmup_image
+        rep_config['warmup_offset'] = warmup_offset
+        rep_config['warmup_address_count'] = warmup_address_count
       rep_config['start_address'] = start_address
       rep_config['start_image'] = start_image
       rep_config['start_offset'] = start_offset
