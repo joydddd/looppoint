@@ -221,19 +221,21 @@ def get_startsim_parms(sim_config, config):
   sniper_args += ['-c%(arch_cfg)s' % sim_config]
   sniper_args += ['--trace-args="-sniper:flow 1000"']
   if  ('end_address' in sim_config) and (sim_config['end_address'] != None):
-    
-    if sim_config['start_address_count'] == '0':
-      sniper_args += ['--trace-args="%(controller)s stop:address:%(end_image)s+%(end_offset)s:count%(end_address_count)s:global"' % sim_config]
-    else:
-      sniper_args += ['--trace-args="%(controller)s start:address:%(start_image)s+%(start_offset)s:count%(start_address_count)s:global" --trace-args="%(controller)s stop:address:%(end_image)s+%(end_offset)s:count%(end_address_count)s:global" ' % sim_config]
-    # sniper_args += ['-gperf_model/fast_forward/oneipc/interval=10000']
+
     
     ## Add warmlup region
     if ('warmup_address' in sim_config) and  (sim_config['warmup_address'] != None):
       sniper_args += ['-ssimuserwarmup --roi-script ']
-      sniper_args += ['--trace-args="%(controller)s warmup-start:address:%(warmup_image)s+%(warmup_offset)s:count%(warmup_address_count)s:global"' % sim_config]
+      sniper_args += ['--trace-args="%(controller)s stop:address:%(end_image)s+%(end_offset)s:count%(end_address_count)s:global"' % sim_config]
+      sniper_args += ['--trace-args="%(controller)s warmup-stop:address:%(start_image)s+%(start_offset)s:count%(start_address_count)s:global"' % sim_config]
+      sniper_args += ['--trace-args="%(controller)s start:address:%(warmup_image)s+%(warmup_offset)s:count%(warmup_address_count)s:global"' % sim_config]
     else:
       sniper_args += ['-ssimuserroi --roi-script ']
+      if sim_config['start_address_count'] == '0':
+        sniper_args += ['--trace-args="%(controller)s stop:address:%(end_image)s+%(end_offset)s:count%(end_address_count)s:global"' % sim_config]
+      else:
+        sniper_args += ['--trace-args="%(controller)s start:address:%(start_image)s+%(start_offset)s:count%(start_address_count)s:global" --trace-args="%(controller)s stop:address:%(end_image)s+%(end_offset)s:count%(end_address_count)s:global" ' % sim_config]
+    # sniper_args += ['-gperf_model/fast_forward/oneipc/interval=10000']
 
     ## enable pinplay controller log. writing to log file 'pinplay_controller.log'
     sniper_args += ['--trace-args="-pinplay:controller_log 1" ']
