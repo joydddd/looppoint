@@ -113,8 +113,8 @@ def gen_bbv(config):
 
   cmd += ' --global_regions --pccount_regions --cfg %(app_cfg)s --whole_pgm_dir %(wpp_dir)s --mode mt -S %(slice_size)s -b --replay_options "-replay:deadlock_timeout 0 -global_profile -emit_vectors 0 -filter_exclude_lib libgomp.so.1 -filter_exclude_lib libiomp5.so  -looppoint:global_profile -looppoint:dcfg-file %(dcfg_file)s -looppoint:main_image_only 1 -looppoint:loop_info %(bm_name)s.%(bm_input)s.loop_info.txt' % config
   ## Add pin_hook start point to save some generation time 
-  if config['pin_hook']:
-    cmd += ' -control start:address:pin_hook_init:bcast,stop:address:pin_hook_fini:bcast'
+  # if config['pin_hook']:
+  #   cmd += ' -control start:address:pin_hook_init:bcast,stop:address:pin_hook_fini:bcast'
   if config['flowcontrol']:
     cmd += ' -flowcontrol:verbose 1 -flowcontrol:quantum 1000000 -flowcontrol:maxthreads %(ncores)s' % config
   cmd += '"'
